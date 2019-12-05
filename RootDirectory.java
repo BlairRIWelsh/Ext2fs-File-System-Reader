@@ -9,12 +9,6 @@ public class RootDirectory extends Directory {
     public RootDirectory(RandomAccessFile file, int iNodeLocation) {
         iNode = new INode(file,iNodeLocation);
         scanFileContents(iNode, file);
-
-        // Helper help = new Helper();
-        // help.outputBlock(file, 1024 + (8192 * 1024) + 1024);
-
-        // Helper help = new Helper();
-        // help.outputBlock(file, 16385);
     }
 
     public INode getINode() {

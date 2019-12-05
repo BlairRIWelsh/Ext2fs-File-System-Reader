@@ -67,13 +67,8 @@ public class INode {
     public int getFileSize() {
         long upp = 0xFFFFFFFF & (long) fileSizeUpper32Bits;
         long low = 0xFFFFFFFF & (long) fileSizeLower32Bits;
-        
-        // System.out.println("\u001B[34m" + upp);
-        // System.out.println(low + "\u001B[0m");
-
         upp = upp << 64;
-
-        return Math.toIntExact( upp +low);
+        return Math.toIntExact(upp +low);
     }
 
     public Date getLastModifiedTime() {
@@ -114,17 +109,36 @@ public class INode {
         indirectPointer = readNbytes(4, iNodeLocation + 82,file);
         if (indirectPointer != 0) {
             //search through this block to find the pointer to more blocks and add those to the array list
-            System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
+            //System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
         }
         doubleIndirectPointer = readNbytes(4, iNodeLocation + 86,file);
         if (doubleIndirectPointer != 0) {
             //search through this block to find the pointer to more blocks which have pointers to more blocks and add those to the array list
-            System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
+            for (int i = 0; i < 1024; i = i + 4) {
+                int temp = readNbytes(4, (doubleIndirectPointer * 1024) + i, file);
+                if (temp != 0) {
+                    System.out.println(temp);
+                    pointersToDataBlocks.add(temp);
+                }
+            }
+            //System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
         }
         tripleIndirectPointer = readNbytes(4, iNodeLocation + 90,file);
         if (tripleIndirectPointer != 0) {
             //search through this block to find the pointer to more blocks which have pointers to more blocks which have pointers to more blocks and add those to the array list
-            System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
+            for (int i = 0; i < 1024; i = i + 4) {
+                int temp = readNbytes(4, (doubleIndirectPointer * 1024) + i, file);
+                if (temp != 0) {
+                    for (int j = 0; j < 1024; j = j + 4) {
+                        int temp2 = readNbytes(4, (doubleIndirectPointer * 1024) + j, file);
+                        if (temp2 != 0) {
+                            System.out.println(temp2);
+                            pointersToDataBlocks.add(temp2);
+                        }
+                    }
+                }
+            }
+            //System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
         }
     }
 

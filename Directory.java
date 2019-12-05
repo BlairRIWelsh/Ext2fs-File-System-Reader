@@ -4,9 +4,14 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
+/**
+ * A class to represent a directory
+ * @param file A file to read from
+ * @param iNodeLocation The location of the iNode for this directory 
+ */
 public class Directory {
     
-    //Every directory will have an iNode and an Array of its files and subdirectories 
+    //Every directory will have an iNode, an Array of its files and an array of subdirectories 
     INode iNode;
     ArrayList<NormalDirectory> subDirectories = new ArrayList();
     ArrayList<File> subFiles = new ArrayList();
@@ -23,7 +28,6 @@ public class Directory {
     //public FileInfo[] getFileInfo () {
     public void getFileInfo() {
 
-        System.out.println("\u001B[33m"+ " "); //make text yellow
         for (NormalDirectory i : subDirectories) { //for every sub-directory in the directory...
             int tempFileMode = (i.getINode().getFileMode() & 0x0000ffff) ; 
             String s = "d" + getPermissions(tempFileMode); //use the filemode to find the permissions
@@ -39,6 +43,11 @@ public class Directory {
         System.out.println("\u001B[0m" + " "); //make text normal
     }
 
+    /**
+     * Returns the permissions for a file/directory using a given File Mode.
+     * @param tempFileMode - The file mode to get the permissions from.
+     * @return - A 9 digit string showing the permissions for the File Mode.
+     */
     public String getPermissions(int tempFileMode) {
         int secondNibble = (tempFileMode >> 8) & 0xf;
         int thirdNibble = tempFileMode >> 4 & 0xf;
@@ -117,39 +126,58 @@ public class Directory {
         return s;
     }
 
+    /**
+     * Reads the contents of a directory and if any files or sub-directories exist populate the respective array.
+     * @param iNode - The iNode of the current Directory.
+     * @param file - The file to read from.
+     */
     public void scanFileContents(INode iNode, RandomAccessFile file) {
-        int temp;
+        //System.out.println("Scanning the file contents!");
+        int tempINode;
         int counter = 0;
+
+        //Create temporary dynamic arrays to hold the information of any files we might potentially find
         ArrayList iNodes = new ArrayList();
         ArrayList length = new ArrayList();
         ArrayList nameLength = new ArrayList();
         ArrayList fileType = new ArrayList();
         ArrayList fileName = new ArrayList();
-        
-        for (int i = 0; i < iNode.getpointersToDataBlocks().size(); i++) {
-            int location = (int) iNode.getpointersToDataBlocks().get(i);
+
+
+        //System.out.println(iNode.getpointersToDataBlocks());
+        for (int i = 0; i < iNode.getpointersToDataBlocks().size(); i++) {  //for every file/subdirectory in this directory... 
+            int location = (int) iNode.getpointersToDataBlocks().get(i);    //get the index of the iNode in the iNode table...
             if (location != 2) {
-                location = location * 1024;
+                location = location * 1024; //!!!                           //???
                 while (true){
-                    temp = readNbytes(4, location + counter, file);
-                    if (temp != 0) {
-                        iNodes.add(temp);
+                    tempINode = readNbytes(4, location + counter, file);    //read the next iNode, if it is 0 we know there is no more files or subdirectories
+                    //System.out.println(tempINode);
+
+                    if (tempINode != 0) {                                   //if the iNode is valid, add its information to the respective ArrayList
+                        iNodes.add(tempINode);
                         length.add(readNbytes(2, location + 4 + counter, file));
+                        //System.out.println("Length: " + readNbytes(2, location + 4 + counter, file));
                         nameLength.add(readNbytes(1, location + 6 + counter, file));
                         fileType.add(readNbytes(1, location + 7 + counter, file));
                         fileName.add(readString((int) nameLength.get(nameLength.size() - 1)   , location + 8 + counter, file));
-                        counter = counter + (int) length.get(length.size() - 1);
-                        if (counter == 1024) {
+
+
+                        if (readNbytes(2, location + 4 + counter, file) == 0){  //!if the length of an item is zero something must be wrong so just break
+                            break; 
+                        }
+                        counter = counter + (int) length.get(length.size() - 1);    //increase the counter by the length of this entry, so we can look at the next entry the next time round the loop
+                        if (counter >= 1024) { //!!!                                 //!if the counter reaches over 1024, we are in a differnt block, so break
                             break;
                         }
-                    } else {
-                        break;
+                    } else {    //if the iNode read is 0 it is not valid so break
+                        break;  
                     }
                 }
             }
         }
 
-        viewFileContents(iNodes,length,nameLength,fileType,fileName);
+        
+        //viewFileContents(iNodes,length,nameLength,fileType,fileName);
 
         //create file or directory using the contents of the array lists
         for (int i = 0; i < iNodes.size(); i++) {
@@ -164,12 +192,20 @@ public class Directory {
                 subFiles.add(f);
             }
         }
-        getFileInfo();
 
-        // Helper help = new Helper();
-        // help.outputBlock(file, 84);
+        //getFileInfo();
+
     }
 
+    /**
+     * Ouptut the iNode Number, Length, NameLength, File Type, and File Name of all the files within this Directory.
+     * Can only be called within scanFileContents.
+     * @param iNodes - The array list of iNode Numbers for every sub-file.
+     * @param length - The array list of Lengths for every sub-file.
+     * @param nameLength - The array list of Name Lengths for every sub-file.
+     * @param fileType - The array list of File types for every sub-file.
+     * @param fileName - The array list of Names for every sub-file.
+     */
     public void viewFileContents(ArrayList iNodes, ArrayList length, ArrayList nameLength, ArrayList fileType, ArrayList fileName) {
         System.out.println("\u001B[33m"+ " ");
         System.out.format("%4s%12s%16s%16s%16s", "INode:","Length:", "NameLength:","File Type:","File Name:");
@@ -181,6 +217,13 @@ public class Directory {
         System.out.println();
     }
 
+    /**
+     * Read a string from a given file.
+     * @param numberOfBytesToRead - How long the string is in bytes.
+     * @param startBit - The starting location of the string.
+     * @param file - The file to read from.
+     * @return - The string read from the file.
+     */
     public String readString(int numberOfBytesToRead, int startBit,RandomAccessFile file) {
         try {
             byte[] bytes = new byte[numberOfBytesToRead];
@@ -195,46 +238,50 @@ public class Directory {
         }
     }
 
+    /**
+     * Reads 2 or 4 bytes from a file given a location
+     * @param numberOfBytesToRead //the number of bytes to read, can be 2 or 4
+     * @param startBit //the starting location of what you want to read
+     * @param file //the file to read from 
+     * @return
+     */
     public static int readNbytes(int numberOfBytesToRead, int startBit, RandomAccessFile file) 
     {
     try {
-        int num = 45;
+        int num = 0;
         byte[] bytes = new byte[numberOfBytesToRead];
         file.seek(startBit);
         file.read(bytes);
         ByteBuffer wrapped = ByteBuffer.wrap(bytes);
         wrapped.order(ByteOrder.LITTLE_ENDIAN);
-        //System.out.println("Number of bytes to read is " + numberOfBytesToRead);
-        if (numberOfBytesToRead == 1) 
-        {
+        if (numberOfBytesToRead == 1) {
             int i = wrapped.get(); 
             return  i;
         }
-        if (numberOfBytesToRead == 2)
-        {
+        if (numberOfBytesToRead == 2) {
             short s = wrapped.getShort();
-            //return Integer.toHexString(s & 0xffff);
-            
             return Integer.valueOf(s);
-        } else if (numberOfBytesToRead == 4)
-        {
+        } else if (numberOfBytesToRead == 4) {
             num = wrapped.getInt();
-            //System.out.println(num);
-            //return Integer.toHexString(num);
             return num;
-        } else if (numberOfBytesToRead == 8)
-        {
+        } else if (numberOfBytesToRead == 8) {
             num = (int) wrapped.getLong();
             return num;
         } 
-        return 45;
+        return 0;
     } catch (IOException e) {
         e.printStackTrace();
-        return 45;
+        return 0;
     }
    }
 
-   public INode getINode() {
-    return iNode;
-    }
+   /**
+    * Returns the iNode for the Directory.
+    * @return - The iNode for the Directory.
+    */
+   public INode getINode() {return iNode;}
+
+   public ArrayList<File> getSubFiles() {return subFiles;}
+
+   public ArrayList<NormalDirectory> getSubDirectories() {return subDirectories;}
 }
