@@ -35,7 +35,6 @@ public class Superblock {
         totalNumINodesInGroup = readNbytes(4,superblockLocation + 40,file);
         sizeOfEachINodeInBytes = readNbytes(4,superblockLocation + 88,file);
         diskName = readString(16, superblockLocation + 120,file);
-        //outputSuperblockInformation();
     }
 
     /**

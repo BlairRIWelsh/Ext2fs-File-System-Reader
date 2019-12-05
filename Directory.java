@@ -5,19 +5,19 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 /**
- * A class to represent a directory
- * @param file A file to read from
- * @param iNodeLocation The location of the iNode for this directory 
+ * A class to represent a directory, which can either be a NormalDirectory or a RootDirectory, both of which inherit from this class.
+ * @param file - A file to read from.
+ * @param iNodeLocation - The location of the iNode for this directory .
  */
 public class Directory {
     
-    //Every directory will have an iNode, an Array of its files and an array of subdirectories 
+    //Every directory will have an iNode, an Array of its files and an array of Sub-Directories.
     INode iNode;
     ArrayList<NormalDirectory> subDirectories = new ArrayList();
     ArrayList<File> subFiles = new ArrayList();
     
     /**
-     * Returns contents of a directory in a form suited to being output in Unix like format, such as:   
+     * Returns contents of a directory in a form like:   
      *   drwxr-xr-x  4 root root   1024 Aug 13 20:20 .
      *   drwxr-xr-x 25 root root   4096 Aug 11 11:15 ..
      *   drwxr-xr-x  3 acs  staff  1024 Aug 13 20:20 home
@@ -27,20 +27,20 @@ public class Directory {
      */
     //public FileInfo[] getFileInfo () {
     public void getFileInfo() {
-
+        System.out.println("\u001B[33m" + " "); //text colour = yellow
         for (NormalDirectory i : subDirectories) { //for every sub-directory in the directory...
             int tempFileMode = (i.getINode().getFileMode() & 0x0000ffff) ; 
             String s = "d" + getPermissions(tempFileMode); //use the filemode to find the permissions
-            System.out.format("%11s  %3d  %5d  %5d  %6d   %28tc  %-32s", s, i.getINode().getNumberOfHardLinksToFile(), i.getINode().getIDOfOwnerLower16Bits(), i.getINode().getGroupIDOfOwner(), i.getINode().getFileSize(), i.getINode().getLastModifiedTime(), i.getFileName());
+            System.out.format("%11s  %3d  %5d  %5d  %12d   %28tc  %-32s", s, i.getINode().getNumberOfHardLinksToFile(), i.getINode().getIDOfOwnerLower16Bits(), i.getINode().getGroupIDOfOwner(), i.getINode().getFileSize(), i.getINode().getLastModifiedTime(), i.getFileName());
             System.out.println();
         }
         for (File i : subFiles) { //for every file in the directory...
             int tempFileMode = (i.getINode().getFileMode() & 0x0000ffff) ;
             String s = "-" + getPermissions(tempFileMode); //use the filemode to find the permissions
-            System.out.format("%11s  %3d  %5d  %5d  %6d   %28tc  %-32s", s, i.getINode().getNumberOfHardLinksToFile(), i.getINode().getIDOfOwnerLower16Bits(), i.getINode().getGroupIDOfOwner(), i.getINode().getFileSize(), i.getINode().getLastModifiedTime(), i.getFileName());
+            System.out.format("%11s  %3d  %5d  %5d  %12d   %28tc  %-32s", s, i.getINode().getNumberOfHardLinksToFile(), i.getINode().getIDOfOwnerLower16Bits(), i.getINode().getGroupIDOfOwner(), i.getINode().getFileSize(), i.getINode().getLastModifiedTime(), i.getFileName());
             System.out.println();
         }
-        System.out.println("\u001B[0m" + " "); //make text normal
+        System.out.println("\u001B[0m" + " "); //reset text colour
     }
 
     /**
@@ -132,7 +132,6 @@ public class Directory {
      * @param file - The file to read from.
      */
     public void scanFileContents(INode iNode, RandomAccessFile file) {
-        //System.out.println("Scanning the file contents!");
         int tempINode;
         int counter = 0;
 
@@ -145,18 +144,19 @@ public class Directory {
 
 
         //System.out.println(iNode.getpointersToDataBlocks());
-        for (int i = 0; i < iNode.getpointersToDataBlocks().size(); i++) {  //for every file/subdirectory in this directory... 
-            int location = (int) iNode.getpointersToDataBlocks().get(i);    //get the index of the iNode in the iNode table...
+        for (int i = 0; i < iNode.getpointersToDataBlocks().size(); i++) {  //for every pointer in the pointersToDataBlocks array... 
+            int location = (int) iNode.getpointersToDataBlocks().get(i);    //get a pointer...
+            //System.out.println("in loop " + i + "  location " + location);
             if (location != 2) {
-                location = location * 1024; //!!!                           //???
+                location = location * 1024; //!!!                           //find the data block in the file its pointing to...
                 while (true){
-                    tempINode = readNbytes(4, location + counter, file);    //read the next iNode, if it is 0 we know there is no more files or subdirectories
-                    //System.out.println(tempINode);
+                    
+                    tempINode = readNbytes(4, location + counter, file);    //read the next iNode starting at 'location'
+                    //System.out.println("temp INode " + tempINode);
 
-                    if (tempINode != 0) {                                   //if the iNode is valid, add its information to the respective ArrayList
+                    if (tempINode != 0) {                                   //if the iNode is valid (not 0) add its information to the respective ArrayList
                         iNodes.add(tempINode);
                         length.add(readNbytes(2, location + 4 + counter, file));
-                        //System.out.println("Length: " + readNbytes(2, location + 4 + counter, file));
                         nameLength.add(readNbytes(1, location + 6 + counter, file));
                         fileType.add(readNbytes(1, location + 7 + counter, file));
                         fileName.add(readString((int) nameLength.get(nameLength.size() - 1)   , location + 8 + counter, file));
@@ -167,13 +167,16 @@ public class Directory {
                         }
                         counter = counter + (int) length.get(length.size() - 1);    //increase the counter by the length of this entry, so we can look at the next entry the next time round the loop
                         if (counter >= 1024) { //!!!                                 //!if the counter reaches over 1024, we are in a differnt block, so break
+                            
                             break;
                         }
                     } else {    //if the iNode read is 0 it is not valid so break
                         break;  
                     }
+                    
                 }
             }
+            counter = 0;
         }
 
         
@@ -192,9 +195,7 @@ public class Directory {
                 subFiles.add(f);
             }
         }
-
         //getFileInfo();
-
     }
 
     /**
@@ -239,7 +240,7 @@ public class Directory {
     }
 
     /**
-     * Reads 2 or 4 bytes from a file given a location
+     * Reads 2, 4 or 8 bytes from a file given a location
      * @param numberOfBytesToRead //the number of bytes to read, can be 2 or 4
      * @param startBit //the starting location of what you want to read
      * @param file //the file to read from 
@@ -275,13 +276,12 @@ public class Directory {
     }
    }
 
-   /**
-    * Returns the iNode for the Directory.
-    * @return - The iNode for the Directory.
-    */
+   /** Returns the iNode for the Directory. @return - The iNode for the Directory */
    public INode getINode() {return iNode;}
 
+   /** Accessor method for the ArrayList of SubFiles @return - The ArrayList of SubFiles */
    public ArrayList<File> getSubFiles() {return subFiles;}
 
+   /** Accessor method for the ArrayList of SubDirectories @return - The ArrayList of SubDirectories */
    public ArrayList<NormalDirectory> getSubDirectories() {return subDirectories;}
 }

@@ -8,6 +8,9 @@ import java.nio.charset.Charset;
 import java.util.*; 
 import java.util.ArrayList;
 
+/**
+ * A class that represents an iNode
+ */
 public class INode {
     private int iNodeLocation;
     private int fileMode;
@@ -25,6 +28,12 @@ public class INode {
     private int tripleIndirectPointer;
     private int fileSizeUpper32Bits;
     
+    /**
+     * Creater class for iNode
+     * Sets up an iNode given a file and the iNode number
+     * @param file - The file to read from.
+     * @param iNodeNumber - The index of this iNode in the iNode table
+     */
     public INode(RandomAccessFile file, int iNodeNumber) {
         int blockSize = 1024;
         int numOfBlocksInBlockGroup0 = 8192;
@@ -34,14 +43,14 @@ public class INode {
         int sizeOfBlockGroup = (numOfBlocksInBlockGroup0 * blockSize);
         int iNodeTablePointer = 84;
         
-        if (iNodeNumber < 1712) {
+        if (iNodeNumber < 1712) { //the iNode is in BlockGroup0
             int iNodeTableBlockPointer = 84;
             iNodeLocation = (iNodeTableBlockPointer * blockSize) + (iNodeNumber - 1) * iNodeSizeInBytes; //((inode table pointer * block size) + (i x inode size)) - for finding the location of the inode in the inode table
-        } else if (iNodeNumber > 1712 && iNodeNumber < 3424 ) { //else we have to look in the 2nd inode table
+        } else if (iNodeNumber > 1712 && iNodeNumber < 3424 ) { //else we have to look in the BlockGroup1
             int iNodeTableBlockPointer = 84;
             iNodeLocation = (sizeOfBlockGroup + (iNodeTableBlockPointer * blockSize)) + ((iNodeNumber-1713 )  * iNodeSizeInBytes);
 
-        } else if (iNodeNumber > 3424) { //else we have to look in the 3rd inode table
+        } else if (iNodeNumber > 3424) { //else we have to look in the BlockGroup2
             int iNodeTableBlockPointer = 3;
             iNodeLocation = (sizeOfBlockGroup + sizeOfBlockGroup + (iNodeTableBlockPointer * blockSize)) + ((iNodeNumber-3425)  * iNodeSizeInBytes);
             
@@ -58,72 +67,75 @@ public class INode {
         groupIDOfOwner = readNbytes(2, iNodeLocation + 24,file);
         numberOfHardLinksToFile = readNbytes(2, iNodeLocation + 26,file);
         readDataBlockPointers(file, iNodeLocation);
-        fileSizeUpper32Bits = readNbytes(4, iNodeLocation + 94,file);
+        //System.out.println(pointersToDataBlocks);
+        fileSizeUpper32Bits = readNbytes(4, iNodeLocation + 108,file);
 
-        
         //outputINodeInformation();
     }
 
-    public int getFileSize() {
+    /**
+     * Returns the file size of a file using the upper and lower 32 bits
+     * @return - The file size of the file this iNode represents
+     */
+    public long getFileSize() {
         long upp = 0xFFFFFFFF & (long) fileSizeUpper32Bits;
         long low = 0xFFFFFFFF & (long) fileSizeLower32Bits;
-        upp = upp << 64;
-        return Math.toIntExact(upp +low);
-    }
+        
+        upp = upp << 32;
 
-    public Date getLastModifiedTime() {
-        return lastModifiedTime;
-    }
-
-    public int getGroupIDOfOwner() {
-        return groupIDOfOwner;
-    }
-
-    public int getIDOfOwnerLower16Bits() {
-        return userIDOfOwnerLower16Bits;
-    }
-
-    public int getFileMode() {
-        return fileMode;
-    }
-
-    public ArrayList getpointersToDataBlocks() {
-        return pointersToDataBlocks;
-    }
-
-    public int getNumberOfHardLinksToFile() {
-        return numberOfHardLinksToFile;
+        
+        return upp + low;
     }
 
     /**
      * read all the non-zero pointers to the data blocks into the pointersToDataBlocks arraylist
+     * @param file - The file to read from 
+     * @param iNodeLocation - The lcoation of the iNode
      */
     public void readDataBlockPointers(RandomAccessFile file, int iNodeLocation) {
          //adds all the pointers to data blocks to the arraylist (long as the are not 0)
-         for (int i = 28; i <80; i = i + 4) {
+        
+        for (int i = 28; i <82; i = i + 4) {
             int temp = readNbytes(4, iNodeLocation + i,file);
             if (temp != 0) {
                 pointersToDataBlocks.add(temp);
             }
         }
-        indirectPointer = readNbytes(4, iNodeLocation + 82,file);
+        
+
+        
+        indirectPointer = readNbytes(4, iNodeLocation + 88,file);
+        //System.out.println(indirectPointer);
         if (indirectPointer != 0) {
+            
+            // System.out.println("im in");
+            // for (int i = 0; i < 1024; i = i + 4) {
+            //     int temp = readNbytes(4, (indirectPointer * 1024) + i, file);
+            //     if (temp != 0) {
+            //         System.out.println(temp);
+            //         pointersToDataBlocks.add(temp);
+            //     }
+            // }
             //search through this block to find the pointer to more blocks and add those to the array list
-            //System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
+            //System.out.println("\u001B[31m INode has indirect pointer = " + indirectPointer + "\u001B[0m");
         }
-        doubleIndirectPointer = readNbytes(4, iNodeLocation + 86,file);
+        
+        
+        
+        
+        doubleIndirectPointer = readNbytes(4, iNodeLocation + 92,file);
         if (doubleIndirectPointer != 0) {
             //search through this block to find the pointer to more blocks which have pointers to more blocks and add those to the array list
             for (int i = 0; i < 1024; i = i + 4) {
                 int temp = readNbytes(4, (doubleIndirectPointer * 1024) + i, file);
                 if (temp != 0) {
-                    System.out.println(temp);
+                    //System.out.println(temp);
                     pointersToDataBlocks.add(temp);
                 }
             }
             //System.out.println("\u001B[31m INode has indirect pointer \u001B[0m");
         }
-        tripleIndirectPointer = readNbytes(4, iNodeLocation + 90,file);
+        tripleIndirectPointer = readNbytes(4, iNodeLocation + 96,file);
         if (tripleIndirectPointer != 0) {
             //search through this block to find the pointer to more blocks which have pointers to more blocks which have pointers to more blocks and add those to the array list
             for (int i = 0; i < 1024; i = i + 4) {
@@ -132,7 +144,7 @@ public class INode {
                     for (int j = 0; j < 1024; j = j + 4) {
                         int temp2 = readNbytes(4, (doubleIndirectPointer * 1024) + j, file);
                         if (temp2 != 0) {
-                            System.out.println(temp2);
+                            //System.out.println(temp2);
                             pointersToDataBlocks.add(temp2);
                         }
                     }
@@ -203,4 +215,22 @@ public class INode {
             return new Date(0);
         }
     }
+
+    /** Returns The last modified time for this File. @return - The last modified time */
+    public Date getLastModifiedTime() {return lastModifiedTime;}
+
+    /** Returns the Group ID. @return - The Group ID of the owner */
+    public int getGroupIDOfOwner() {return groupIDOfOwner;}
+
+    /** Returns The ID. @return - The ID of the owner */
+    public int getIDOfOwnerLower16Bits() {return userIDOfOwnerLower16Bits;}
+
+    /** Returns The file mode. @return - The file mode */
+    public int getFileMode() {return fileMode;}
+
+    /** Returns The ArrayList of pointers to data blocks. @return - The ArrayList of pointers to data blocks */
+    public ArrayList getpointersToDataBlocks() {return pointersToDataBlocks;}
+
+    /** Returns The number of hard links to this file. @return - The number of hard links to this file */
+    public int getNumberOfHardLinksToFile() {return numberOfHardLinksToFile;}
 }
