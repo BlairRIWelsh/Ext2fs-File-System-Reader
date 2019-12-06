@@ -13,7 +13,7 @@ public class RootDirectory extends Directory {
      * Set up the root directories iNode and its sub-files and sub-directories 
      */
     public RootDirectory(RandomAccessFile file, int iNodeLocation) {
-        iNode = new INode(file,iNodeLocation);
+        iNode = new INode(file,iNodeLocation, "root");
         scanFileContents(iNode, file);
     }
 

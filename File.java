@@ -34,7 +34,7 @@ public class File {
         nameLength = nl;
         fileType = ft;
         fileName = n;
-        iNode = new INode(file,iNodeNumber);
+        iNode = new INode(file,iNodeNumber, fileName);
     }
 
     /**
@@ -43,9 +43,11 @@ public class File {
      * @return
      */
     public byte[] outputFileBytes() {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         for (int i = 1; i < (iNode.getpointersToDataBlocks()).size(); i++) { // For every dataBlock the iNode points too....
+            
             int dataBlockNumber = (int) iNode.getpointersToDataBlocks().get(i);
+            //System.out.println(dataBlockNumber);
             try {
                 outputStream.write(readDataBlock(file, dataBlockNumber)); // Read that dataBlock...
             } catch (IOException e) {

@@ -4,6 +4,7 @@ public class Driver {
 
         Volume  vol = new Volume("ext2fs.txt");
         Helper help = new Helper();
+        //help.outputBlock(file, 15873);
 
         // // Read superblock information and group descriptor information
         // vol.getSuperBlock().outputSuperblockInformation();
@@ -16,16 +17,19 @@ public class Driver {
         // System.out.format ("%s\n", new String(buf));
         // help.dumpHexBytes(buf);
 
+        vol.viewFileContents("/files");
+
         //Reading the deep file 
         //Ext2File  f = new Ext2File (vol, "/deep/down/in/the/filesystem/there/lived/a/file.txt");
         Ext2File  f = new Ext2File (vol,"/files/dir-e.txt");
-        byte buf[] = f.read(0L,f.getSize());
+        byte buf[] = f.read(f.getSize());
         System.out.format ("%s\n", new String(buf));
-        help.dumpHexBytes(buf);
+        //help.dumpHexBytes(buf);
+        
 
 
         //vol.viewFileContents("/root");
-        //vol.viewFileContents("/files");
+       
         
 
 

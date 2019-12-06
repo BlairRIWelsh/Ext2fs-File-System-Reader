@@ -80,7 +80,7 @@ public class Ext2File {
             throw new UnsupportedOperationException("Start byte should be 0 ≤ startByte < file.size");
         } else {
             byte[] temp = reference.outputFileBytes();
-            byte[] trim = new byte[(int) length];
+            byte[] trim = new byte[temp.length];
             System.arraycopy((Object) temp, (int) startByte, (Object) trim, 0, (int) length);
             position = position + length;
             return trim;
@@ -97,7 +97,7 @@ public class Ext2File {
             throw new UnsupportedOperationException("Position is set beyond the end of the file");
         } else {
             byte[] temp = reference.outputFileBytes();
-            byte[] trim = new byte[(int) length];
+            byte[] trim = new byte[temp.length];
             System.arraycopy((Object) temp, (int) position, (Object)  trim, 0, (int) length);
             position = position + length;
             return trim;
@@ -113,5 +113,7 @@ public class Ext2File {
     }
 
     /** Accessor method for Size. @return the size of this file in bytes */
-    public long getSize() {return reference.getINode().getFileSize();}
+    public long getSize() {
+        //System.out.println(reference.getINode().getFileSize());
+        return reference.getINode().getFileSize();}
 }

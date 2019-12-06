@@ -26,6 +26,8 @@ public class Volume {
             superblock = new Superblock(blockSize, file);
             iNodeTablePointer = findFirstiNodeTablePointer(file);
             root = new RootDirectory(file, 2);
+            // Helper help = new Helper();
+            // help.outputBlock(file, 15873);
         } catch (IOException e) {
             e.printStackTrace();
         }

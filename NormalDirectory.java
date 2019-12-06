@@ -20,7 +20,7 @@ public class NormalDirectory extends Directory  {
         nameLength = nl;
         fileType = ft;
         fileName = n;
-        iNode = new INode(file, iNodeNumber);
+        iNode = new INode(file, iNodeNumber, fileName );
     }
 
     /**
